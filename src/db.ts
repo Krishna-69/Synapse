@@ -1,6 +1,7 @@
 import mongoose, { model, Schema } from "mongoose";
+import { mongoDbUrl } from "./config.js";
 
-mongoose.connect("mongodb+srv://admin:admin%40123@cluster0.fnkgnnt.mongodb.net/Synapse")
+mongoose.connect(mongoDbUrl)
 
 const UserSchema = new Schema({
     username: {type: String, unique: true},
