@@ -1,9 +1,11 @@
 import express from "express";
 import * as z from "zod";
 import jwt from "jsonwebtoken";
-import { ContentModel, UserModel } from "./db.js";
+import { ContentModel, LinkModel, UserModel } from "./db.js";
 import { JWT_PASSWORD } from "./config.js";
 import { userMiddleware } from "./middleware.js";
+import { random } from "./utils.js";
+import { log } from "node:console";
 
 declare global {
   namespace Express {
@@ -164,7 +166,7 @@ app.delete("/api/v1/content", userMiddleware, async (req, res) => {
   const { contentId } = parsedDelete.data;
 
   try {
-    await ContentModel.deleteMany({
+    await ContentModel.deleteOne({
       _id: contentId,
       userId: req.userId,
     });
@@ -178,8 +180,89 @@ app.delete("/api/v1/content", userMiddleware, async (req, res) => {
   }
 });
 
-app.post("/api/v1/brain/share", (req, res) => {});
+const shareSchema = z.object({
+  share: z.boolean(),
+});
 
-app.get("/api/v1/brain/:shareLink", (req, res) => {});
+app.post("/api/v1/brain/share", userMiddleware, async (req, res) => {
+  const parsedShare = shareSchema.safeParse(req.body);
+
+  if (!parsedShare.success) {
+    return res.status(400).json({
+      message: "Invalid Share input",
+      error: parsedShare.error.issues,
+    });
+  }
+
+  const { share } = parsedShare.data;
+
+  try {
+    if (share) {
+      const existingLink = await LinkModel.findOne({
+        userId: req.userId,
+      });
+
+      if (existingLink) {
+        return res.json({
+          hash: existingLink.hash,
+        });
+      }
+
+      const hash = random(10);
+      if (!existingLink) {
+        await LinkModel.create({
+          userId: req.userId,
+          hash: hash,
+        });
+      }
+    } else {  
+        await LinkModel.deleteOne({
+        userId: req.userId,
+      });
+
+      return res.json({
+        message: "Removed link",
+      });
+    }
+  } catch (e) {
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
+});
+
+app.get("/api/v1/brain/:shareLink", async (req, res) => {
+  const hash = req.params.shareLink;
+
+  const link = await LinkModel.findOne({
+    hash: hash,
+  });
+
+  if (!link) {
+    res.status(411).json({
+      message: "Sorry incorrect link",
+    });
+    return;
+  }
+
+  const content = await ContentModel.find({
+    userId: link.userId,
+  });
+
+  const user = await UserModel.findOne({
+    _id: link.userId,
+  });
+
+  if (!user) {
+    return res.status(411).json({
+      message: "Sorry incorrect link",
+    });
+  }
+
+  return res.json({
+    username: user.username,
+    content: content,
+  });
+});
 
 app.listen(3000);

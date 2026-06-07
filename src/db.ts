@@ -1,5 +1,7 @@
 import mongoose, { model, Schema } from "mongoose";
 import { mongoDbUrl } from "./config.js";
+import { string } from "zod";
+import { ref } from "node:process";
 
 mongoose.connect(mongoDbUrl)
 
@@ -18,3 +20,10 @@ const ContentSchema = new Schema({
 })
 
 export const ContentModel = model("Content", ContentSchema);
+
+const LinkSchema = new Schema({
+    hash: String,
+    userId: {type: mongoose.Types.ObjectId, ref: "Users", required: true, unique: true}
+})
+
+export const LinkModel = model("Link", LinkSchema);
