@@ -70,33 +70,31 @@ app.post("/api/v1/signin", async (req, res) => {
 
   try {
     const existingUser = await UserModel.findOne({
-    username,
-    password,
-  });
-
-  if (existingUser) {
-    const token = jwt.sign(
-      {
-        id: existingUser._id,
-      },
-      JWT_PASSWORD,
-    );
-
-    return res.json({
-      token,
+      username,
+      password,
     });
-  } else {
-    return res.status(403).json({
-      message: "Incorrect credentials",
+
+    if (existingUser) {
+      const token = jwt.sign(
+        {
+          id: existingUser._id,
+        },
+        JWT_PASSWORD,
+      );
+
+      return res.json({
+        token,
+      });
+    } else {
+      return res.status(403).json({
+        message: "Incorrect credentials",
+      });
+    }
+  } catch (e) {
+    return res.status(500).json({
+      message: "Internal server error",
     });
   }
-
-  } catch (e) {
-        return res.status(500)
-                  .json({
-                    message: "Internal server error"
-                  })
-    }
 });
 
 const contentSchema = z.object({
@@ -150,30 +148,34 @@ app.get("/api/v1/content", userMiddleware, async (req, res) => {
 });
 
 const deleteSchema = z.object({
-    contentId: z.string()
+  contentId: z.string(),
 });
 
-
 app.delete("/api/v1/content", userMiddleware, async (req, res) => {
-    const parsedDelete = deleteSchema.safeParse(req.body);
-    
-    if (!parsedDelete.success) {
-      return res.status(400)
-                .json({
-                    message: "Delete Invalide", 
-                    error: parsedDelete.error.issues
-                })
-    }
+  const parsedDelete = deleteSchema.safeParse(req.body);
 
-    const {contentId} = parsedDelete.data;
+  if (!parsedDelete.success) {
+    return res.status(400).json({
+      message: "Invalide delete request",
+      error: parsedDelete.error.issues,
+    });
+  }
 
-  await ContentModel.deleteMany({
-    _id: contentId,
-    userId: req.userId,
-  });
-  return res.json({
-    message: "Deleted",
-  });
+  const { contentId } = parsedDelete.data;
+
+  try {
+    await ContentModel.deleteMany({
+      _id: contentId,
+      userId: req.userId,
+    });
+    return res.json({
+      message: "Deleted",
+    });
+  } catch (e) {
+    return res.status(500).json({
+      message: "Internal server error",
+    });
+  }
 });
 
 app.post("/api/v1/brain/share", (req, res) => {});
