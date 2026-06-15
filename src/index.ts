@@ -5,7 +5,7 @@ import { ContentModel, LinkModel, UserModel } from "./db.js";
 import { JWT_PASSWORD } from "./config.js";
 import { userMiddleware } from "./middleware.js";
 import { random } from "./utils.js";
-import { log } from "node:console";
+import cors from "cors"
 
 declare global {
   namespace Express {
@@ -23,6 +23,7 @@ const signupSchema = z.object({
 });
 
 app.use(express.json());
+app.use(cors());
 
 app.post("/api/v1/signup", async (req, res) => {
   // hash the password
@@ -101,7 +102,8 @@ app.post("/api/v1/signin", async (req, res) => {
 
 const contentSchema = z.object({
   title: z.string().min(1),
-  link: z.url(),
+  link: z.string(),
+  type: z.string(),
 });
 
 app.post("/api/v1/content", userMiddleware, async (req, res) => {
@@ -114,12 +116,13 @@ app.post("/api/v1/content", userMiddleware, async (req, res) => {
     });
   }
 
-  const { title, link } = parsedContent.data;
+  const { title, link, type } = parsedContent.data;
 
   try {
     await ContentModel.create({
       title,
       link,
+      type,
       userId: req.userId,
       tags: [],
     });
